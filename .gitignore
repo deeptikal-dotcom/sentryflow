@@ -51,7 +51,7 @@ test-results/
 *.log
 
 # Ollama models (downloaded separately)
-models/
+/models/
 
 # Keys (never commit)
 keys/
