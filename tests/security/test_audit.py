@@ -78,6 +78,79 @@ class TestAuditChain:
         assert any("hash mismatch" in e for e in errors)
 
 
+class TestAuditCheckpoints:
+    @pytest.mark.asyncio
+    async def test_create_checkpoint(self, db, logger):
+        from backend.trust.crypto import generate_ed25519_keypair
+        for i in range(5):
+            await logger.log(db, f"event_{i}", "system", "sys", f"action_{i}")
+            await db.flush()
+
+        priv, pub = generate_ed25519_keypair()
+        cp = await logger.create_checkpoint(db, signing_key=priv)
+        assert cp is not None
+        assert cp.sequence_from == 1
+        assert cp.sequence_to == 5
+        assert cp.record_count == 5
+        assert cp.signature_ed25519 is not None
+        assert len(cp.checkpoint_hash) == 64
+
+    @pytest.mark.asyncio
+    async def test_no_checkpoint_when_empty(self, db, logger):
+        from backend.trust.crypto import generate_ed25519_keypair
+        priv, _ = generate_ed25519_keypair()
+        cp = await logger.create_checkpoint(db, signing_key=priv)
+        assert cp is None
+
+    @pytest.mark.asyncio
+    async def test_checkpoint_pqc_signed(self, db, logger):
+        from backend.trust.crypto import generate_ed25519_keypair, generate_mldsa65_keypair
+        for i in range(3):
+            await logger.log(db, f"event_{i}", "system", "sys", f"action_{i}")
+            await db.flush()
+
+        ed_priv, _ = generate_ed25519_keypair()
+        mldsa_priv, _ = generate_mldsa65_keypair()
+        cp = await logger.create_checkpoint(db, signing_key=ed_priv, mldsa_key=mldsa_priv)
+        assert cp is not None
+        assert cp.signature_mldsa is not None
+
+    @pytest.mark.asyncio
+    async def test_checkpoint_only_new_records(self, db, logger):
+        from backend.trust.crypto import generate_ed25519_keypair
+        priv, _ = generate_ed25519_keypair()
+
+        for i in range(3):
+            await logger.log(db, f"event_{i}", "system", "sys", f"action_{i}")
+            await db.flush()
+        cp1 = await logger.create_checkpoint(db, signing_key=priv)
+        await db.flush()
+        assert cp1.record_count == 3
+
+        for i in range(3, 7):
+            await logger.log(db, f"event_{i}", "system", "sys", f"action_{i}")
+            await db.flush()
+        cp2 = await logger.create_checkpoint(db, signing_key=priv)
+        assert cp2.sequence_from == 4
+        assert cp2.sequence_to == 7
+        assert cp2.record_count == 4
+
+    @pytest.mark.asyncio
+    async def test_export_checkpoint(self, db, logger):
+        from backend.trust.crypto import generate_ed25519_keypair
+        priv, _ = generate_ed25519_keypair()
+
+        for i in range(5):
+            await logger.log(db, f"event_{i}", "system", "sys", f"action_{i}")
+            await db.flush()
+        cp = await logger.create_checkpoint(db, signing_key=priv)
+        await db.flush()
+
+        export = await logger.export_checkpoint(db, cp.id)
+        assert export["checkpoint"]["id"] == cp.id
+        assert len(export["records"]) == 5
+
+
 class TestAuditContent:
     @pytest.mark.asyncio
     async def test_structured_decision_logged(self, db, logger):

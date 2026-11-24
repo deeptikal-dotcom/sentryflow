@@ -2,22 +2,26 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Bot,
+  Send,
   CheckCircle,
   Shield,
   FileText,
   Users,
   LogOut,
   Activity,
+  Zap,
 } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/agents', label: 'Agents', icon: Bot },
+  { path: '/agent-tasks', label: 'Agent Tasks', icon: Send },
   { path: '/approvals', label: 'Approvals', icon: CheckCircle },
   { path: '/suppliers', label: 'Suppliers', icon: Users },
   { path: '/audit', label: 'Audit Trail', icon: FileText },
   { path: '/threats', label: 'Threats', icon: Shield },
+  { path: '/attack-lab', label: 'Attack Lab', icon: Zap },
   { path: '/activity', label: 'Activity', icon: Activity },
 ];
 

@@ -271,6 +271,9 @@ class TestApprovalFlow:
         exec_data = resp.json()
         assert exec_data["status"] == "executed"
         assert exec_data["result"]["payment_id"] != ""
+        assert exec_data["signature"] is not None
+        assert exec_data["pqc_signed"] is True
+        assert exec_data["mldsa_signature"] is not None
 
     @pytest.mark.asyncio
     async def test_deny_blocks_execution(
@@ -293,6 +296,7 @@ class TestApprovalFlow:
             },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
+        tc_id = resp.json()["tool_call_id"]
         approval_id = resp.json()["approval_id"]
 
         resp = await client.post(
@@ -306,7 +310,7 @@ class TestApprovalFlow:
         resp = await client.post(
             "/api/v1/executor/run",
             json={
-                "tool_call_id": _uuid(),
+                "tool_call_id": tc_id,
                 "tool_name": "create_payment",
                 "parameters": payment_params,
                 "approval_id": approval_id,
@@ -413,6 +417,7 @@ class TestReplayProtection:
             },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
+        tc_id = resp.json()["tool_call_id"]
         approval_id = resp.json()["approval_id"]
 
         await client.post(
@@ -424,7 +429,7 @@ class TestReplayProtection:
         resp = await client.post(
             "/api/v1/executor/run",
             json={
-                "tool_call_id": _uuid(),
+                "tool_call_id": tc_id,
                 "tool_name": "create_payment",
                 "parameters": payment_params,
                 "approval_id": approval_id,
@@ -436,7 +441,7 @@ class TestReplayProtection:
         resp = await client.post(
             "/api/v1/executor/run",
             json={
-                "tool_call_id": _uuid(),
+                "tool_call_id": tc_id,
                 "tool_name": "create_payment",
                 "parameters": payment_params,
                 "approval_id": approval_id,

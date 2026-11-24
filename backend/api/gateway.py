@@ -52,6 +52,9 @@ class ExecutionResult(BaseModel):
     receipt_id: str = ""
     status: str = ""
     result: dict[str, Any] | None = None
+    signature: str | None = None
+    mldsa_signature: str | None = None
+    pqc_signed: bool = False
     error: str | None = None
 
 
@@ -171,7 +174,12 @@ async def evaluate_tool_call(
     )
 
     if body.auto_execute and policy_result.decision == PolicyDecision.ALLOW:
-        executor = Executor()
+        from backend.trust.key_manager import get_executor_keys
+        keys = get_executor_keys()
+        executor = Executor(
+            signing_key=keys.ed25519_private,
+            mldsa_private_key=keys.mldsa_private,
+        )
         receipt = await executor.execute(
             session,
             tool_call_id=tc_id,
@@ -183,6 +191,9 @@ async def evaluate_tool_call(
             receipt_id=receipt.receipt_id,
             status=receipt.status,
             result=receipt.result or None,
+            signature=receipt.signature,
+            mldsa_signature=receipt.mldsa_signature,
+            pqc_signed=receipt.pqc_signed,
             error=receipt.error,
         )
 

@@ -60,6 +60,23 @@ export const api = {
   verifyChain: () => request<{ valid: boolean; errors: string[] }>('/audit/verify'),
 
   listIncidents: () => request<{ incidents: Incident[] }>('/incidents/'),
+
+  executeToolCall: (data: {
+    tool_call_id: string;
+    tool_name: string;
+    parameters: Record<string, unknown>;
+    approval_id?: string;
+  }) => request<ExecuteResult>('/executor/run', { method: 'POST', body: JSON.stringify(data) }),
+
+  auditCheckpoint: () => request<CheckpointResult>('/audit/checkpoint', { method: 'POST' }),
+  auditCheckpoints: () => request<{ checkpoints: CheckpointInfo[] }>('/audit/checkpoints'),
+  auditExport: (id: string) => request<Record<string, unknown>>(`/audit/export/${id}`),
+  auditStats: () => request<AuditStats>('/audit/stats'),
+
+  pqcStatus: () => request<PQCStatus>('/pqc/status'),
+  mlkemDemo: () => request<MLKEMDemoResult>('/pqc/mlkem-demo', { method: 'POST' }),
+
+  wsTicket: () => request<{ ticket: string; expires_in: number }>('/auth/ws-ticket', { method: 'POST' }),
 };
 
 export interface DashboardOverview {
@@ -141,4 +158,63 @@ export interface Incident {
   status: string;
   detected_at: string;
   source_agent_id: string | null;
+}
+
+export interface ExecuteResult {
+  receipt_id: string;
+  tool_call_id: string;
+  tool_name: string;
+  status: string;
+  result: Record<string, unknown> | null;
+  approval_id: string | null;
+  signature: string | null;
+  mldsa_signature: string | null;
+  pqc_signed: boolean;
+  executed_at: string;
+  error: string | null;
+}
+
+export interface CheckpointResult {
+  created: boolean;
+  checkpoint_id?: string;
+  sequence_from?: number;
+  sequence_to?: number;
+  record_count?: number;
+  pqc_signed?: boolean;
+  reason?: string;
+}
+
+export interface CheckpointInfo {
+  id: string;
+  sequence_from: number;
+  sequence_to: number;
+  record_count: number;
+  chain_hash: string;
+  pqc_signed: boolean;
+  created_at: string;
+}
+
+export interface AuditStats {
+  total_events: number;
+  checkpoints: number;
+  last_checkpoint_at: string | null;
+  last_checkpoint_seq: number | null;
+}
+
+export interface PQCStatus {
+  mldsa65_available: boolean;
+  mlkem768_available: boolean;
+  openssl_version: string;
+  executor_pqc_signing: boolean;
+  executor_ed25519_public: string;
+  executor_mldsa_public: string | null;
+}
+
+export interface MLKEMDemoResult {
+  public_key_b64: string;
+  ciphertext_b64: string;
+  shared_secret_match: boolean;
+  shared_secret_length_bytes: number;
+  encapsulation_time_ms: number;
+  decapsulation_time_ms: number;
 }
