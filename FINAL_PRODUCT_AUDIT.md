@@ -2,7 +2,7 @@
 
 ## Test Summary
 
-**175 tests passing** across unit, security, and integration suites:
+**188 tests passing** across unit, security, and integration suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
