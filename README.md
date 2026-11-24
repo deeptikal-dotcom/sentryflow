@@ -66,11 +66,29 @@ Four Docker networks enforce isolation: `agent-net`, `trusted-net`, `lab-net`, `
 - Supplier registry with risk visualization
 - Threat center with severity breakdown
 
+## Screenshots
+
+| Login | Security Dashboard |
+|:---:|:---:|
+| ![Login](docs/screenshots/01-login.png) | ![Dashboard](docs/screenshots/02-dashboard.png) |
+
+| AI Agents | Agent Tasks |
+|:---:|:---:|
+| ![Agents](docs/screenshots/03-agents.png) | ![Agent Tasks](docs/screenshots/04-agent-tasks.png) |
+
+| Attack Simulation Lab | Suppliers |
+|:---:|:---:|
+| ![Attack Lab](docs/screenshots/07-attack-lab.png) | ![Suppliers](docs/screenshots/05-suppliers.png) |
+
+| Audit Trail | Threat Monitoring |
+|:---:|:---:|
+| ![Audit](docs/screenshots/10-audit-trail.png) | ![Threats](docs/screenshots/11-threats.png) |
+
 ## Quick Start
 
 ```bash
 # Clone and start
-git clone <repo-url>
+git clone https://github.com/deeptikal-dotcom/sentryflow.git
 cd sentryflow
 docker compose up
 

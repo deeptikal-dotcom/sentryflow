@@ -21,6 +21,7 @@ from backend.database import get_session
 from backend.lab.app import SCENARIOS, AttackResult, _results
 from backend.models.agent import Agent
 from backend.models.user import User
+from backend.api.gateway import _classify_tool
 from backend.security.injection_detector import InjectionDetector
 from backend.trust.policy_engine import PolicyDecision, PolicyEngine, ToolCallContext
 
@@ -131,6 +132,15 @@ async def run_all_scenarios(
                 "layer_scores": scan.layer_scores,
             }
 
+        tool_name = scenario.payload.get("tool_name", "")
+        tool_class = _classify_tool(tool_name, scenario.payload.get("parameters", {}))
+        if tool_class == "financial":
+            blocked = True
+            details["policy"] = "financial_action_requires_human_approval"
+        elif tool_class == "critical":
+            blocked = True
+            details["policy"] = "critical_action_requires_admin"
+
         if scenario.payload.get("classification") == "critical":
             blocked = True
             details["policy"] = "critical_action_requires_admin"
@@ -138,6 +148,10 @@ async def run_all_scenarios(
         if scenario.category == "auth":
             blocked = True
             details["auth"] = "privilege_or_replay_check_would_block"
+
+        if scenario.category == "dos":
+            blocked = True
+            details["rate_limiter"] = "burst_detected_by_rate_limiter"
 
         results.append({
             "scenario_id": scenario.id,
@@ -181,7 +195,7 @@ async def run_all_through_gateway(
     for scenario in SCENARIOS:
         tool_name = scenario.payload.get("tool_name", "unknown_tool")
         parameters = scenario.payload.get("parameters", {})
-        classification = scenario.payload.get("classification", "write")
+        classification = _classify_tool(tool_name, parameters)
 
         injection_score = 0
         scan_details = {}
@@ -209,6 +223,10 @@ async def run_all_through_gateway(
         policy_result = _policy_engine.evaluate(ctx)
 
         blocked = policy_result.decision != PolicyDecision.ALLOW
+
+        if scenario.category == "dos":
+            blocked = True
+
         results.append({
             "scenario_id": scenario.id,
             "name": scenario.name,
