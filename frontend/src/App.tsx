@@ -4,6 +4,9 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
 import Approvals from './pages/Approvals';
+import Suppliers from './pages/Suppliers';
+import AuditTrail from './pages/AuditTrail';
+import Threats from './pages/Threats';
 import Placeholder from './pages/Placeholder';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -27,9 +30,9 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/approvals" element={<Approvals />} />
-          <Route path="/suppliers" element={<Placeholder title="Supplier Management" />} />
-          <Route path="/audit" element={<Placeholder title="Audit Trail" />} />
-          <Route path="/threats" element={<Placeholder title="Threat Center" />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/audit" element={<AuditTrail />} />
+          <Route path="/threats" element={<Threats />} />
           <Route path="/activity" element={<Placeholder title="Activity Feed" />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

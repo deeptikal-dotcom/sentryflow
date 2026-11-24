@@ -53,6 +53,13 @@ export const api = {
   }) => request<ToolCallResult>('/gateway/evaluate', { method: 'POST', body: JSON.stringify(data) }),
 
   listSuppliers: () => request<{ suppliers: Supplier[] }>('/suppliers/'),
+  getSupplier: (id: string) => request<SupplierDetail>(`/suppliers/${id}`),
+  verifySupplier: (id: string) => request(`/suppliers/${id}/verify`, { method: 'POST' }),
+
+  auditEvents: (limit = 50) => request<{ events: AuditEvent[] }>(`/audit/events?limit=${limit}`),
+  verifyChain: () => request<{ valid: boolean; errors: string[] }>('/audit/verify'),
+
+  listIncidents: () => request<{ incidents: Incident[] }>('/incidents/'),
 };
 
 export interface DashboardOverview {
@@ -109,6 +116,29 @@ export interface ToolCallResult {
 export interface Supplier {
   id: string;
   name: string;
+  tax_id?: string;
   verified: boolean;
   risk_score: number;
+  created_at: string;
+}
+
+export interface SupplierDetail extends Supplier {
+  bank_accounts: {
+    id: string;
+    bank_name: string;
+    is_current: boolean;
+    account_fingerprint: string;
+    created_at: string;
+  }[];
+}
+
+export interface Incident {
+  id: string;
+  incident_type: string;
+  severity: string;
+  title: string;
+  description: string;
+  status: string;
+  detected_at: string;
+  source_agent_id: string | null;
 }
