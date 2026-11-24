@@ -52,6 +52,7 @@ class BaseAgent(ABC):
         agent_type: str,
         capabilities: list[str],
         gateway_url: str = "http://gateway:8000",
+        auth_token: str | None = None,
     ):
         self.state = AgentState(
             agent_id=agent_id,
@@ -61,6 +62,7 @@ class BaseAgent(ABC):
             created_at=datetime.now(UTC).isoformat(),
         )
         self._gateway_url = gateway_url.rstrip("/")
+        self._auth_token = auth_token
         self._ollama_client = None
 
     @abstractmethod
@@ -83,9 +85,14 @@ class BaseAgent(ABC):
             if tool.context:
                 payload["context"] = tool.context
 
+            headers = {}
+            if self._auth_token:
+                headers["Authorization"] = f"Bearer {self._auth_token}"
+
             resp = await client.post(
                 f"{self._gateway_url}/api/v1/gateway/evaluate",
                 json=payload,
+                headers=headers,
             )
             resp.raise_for_status()
             data = resp.json()

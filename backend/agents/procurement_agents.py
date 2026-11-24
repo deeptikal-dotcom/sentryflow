@@ -16,12 +16,13 @@ logger = logging.getLogger("sentryflow.agents")
 class BuyerAgent(BaseAgent):
     """Creates purchase orders from approved requisitions."""
 
-    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000"):
+    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000", auth_token: str | None = None):
         super().__init__(
             agent_id=agent_id,
             agent_type="buyer",
             capabilities=["read_suppliers", "create_po", "read_contracts"],
             gateway_url=gateway_url,
+            auth_token=auth_token,
         )
 
     async def process_task(self, task: dict) -> dict:
@@ -58,12 +59,13 @@ class BuyerAgent(BaseAgent):
 class NegotiatorAgent(BaseAgent):
     """Analyzes contracts and suggests terms adjustments."""
 
-    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000"):
+    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000", auth_token: str | None = None):
         super().__init__(
             agent_id=agent_id,
             agent_type="negotiator",
             capabilities=["read_contracts", "read_suppliers", "suggest_terms"],
             gateway_url=gateway_url,
+            auth_token=auth_token,
         )
 
     async def process_task(self, task: dict) -> dict:
@@ -86,12 +88,13 @@ class NegotiatorAgent(BaseAgent):
 class InvoiceProcessorAgent(BaseAgent):
     """Processes incoming invoices — extraction, matching, validation."""
 
-    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000"):
+    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000", auth_token: str | None = None):
         super().__init__(
             agent_id=agent_id,
             agent_type="invoice_processor",
             capabilities=["read_invoices", "process_invoices", "read_suppliers"],
             gateway_url=gateway_url,
+            auth_token=auth_token,
         )
 
     async def process_task(self, task: dict) -> dict:
@@ -119,12 +122,13 @@ class InvoiceProcessorAgent(BaseAgent):
 class POManagerAgent(BaseAgent):
     """Manages purchase order lifecycle — approvals, receipts, updates."""
 
-    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000"):
+    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000", auth_token: str | None = None):
         super().__init__(
             agent_id=agent_id,
             agent_type="po_manager",
             capabilities=["read_pos", "update_po_status", "read_receipts"],
             gateway_url=gateway_url,
+            auth_token=auth_token,
         )
 
     async def process_task(self, task: dict) -> dict:
@@ -146,12 +150,13 @@ class POManagerAgent(BaseAgent):
 class PaymentAgent(BaseAgent):
     """Initiates payment requests for validated invoices."""
 
-    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000"):
+    def __init__(self, agent_id: str, gateway_url: str = "http://gateway:8000", auth_token: str | None = None):
         super().__init__(
             agent_id=agent_id,
             agent_type="payment",
             capabilities=["read_invoices", "create_payment", "read_suppliers"],
             gateway_url=gateway_url,
+            auth_token=auth_token,
         )
 
     async def process_task(self, task: dict) -> dict:

@@ -2,7 +2,7 @@
 
 ## Test Summary
 
-**188 tests passing** across unit, security, and integration suites:
+**206 tests passing** across unit, security, and integration suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
@@ -77,4 +77,4 @@ The Executor was designed as a separate container in the architecture but implem
 
 ## Conclusion
 
-SentryFlow implements 15 of 16 required capabilities (R10 partial) and all 8 security invariants. The system operates at zero recurring cost with all commercially compatible licenses. 175 tests verify correctness across unit, security, and integration levels.
+SentryFlow implements 15 of 16 required capabilities (R10 partial) and all 8 security invariants. The system operates at zero recurring cost with all commercially compatible licenses. 206 tests verify correctness across unit, security, and integration levels. All 10 attack scenarios are blocked (100% block rate). Real LLM inference verified with Llama 3.2 3B on CPU.

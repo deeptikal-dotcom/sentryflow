@@ -259,14 +259,20 @@ def _classify_tool(tool_name: str, params: dict) -> str:
     financial_tools = {
         "create_payment", "approve_payment", "execute_payment",
         "update_bank_details", "modify_payment",
+        "register_bank_change", "submit_invoice",
     }
     critical_tools = {
-        "modify_policy", "revoke_agent", "suspend_agent",
+        "modify_policy", "modify_policy_rules", "revoke_agent", "suspend_agent",
         "delete_supplier", "modify_audit",
     }
     write_tools = {
-        "create_purchase_order", "update_po_status", "receive_goods",
+        "create_purchase_order", "create_po", "update_po_status", "receive_goods",
         "process_invoice", "register_supplier", "update_supplier",
+        "send_notification",
+    }
+    read_tools = {
+        "read_supplier", "read_contract", "read_invoices", "read_pos",
+        "read_receipts", "list_suppliers",
     }
 
     if tool_name in financial_tools:
@@ -275,4 +281,6 @@ def _classify_tool(tool_name: str, params: dict) -> str:
         return "critical"
     if tool_name in write_tools:
         return "write"
-    return "read_only"
+    if tool_name in read_tools:
+        return "read_only"
+    return "write"

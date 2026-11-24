@@ -265,6 +265,23 @@ async def run_scenario(scenario_id: str):
             "layer_scores": scan.layer_scores,
         }
 
+    tool_name = scenario.payload.get("tool_name", "")
+    financial_tools = {
+        "create_payment", "approve_payment", "execute_payment",
+        "update_bank_details", "modify_payment",
+        "register_bank_change", "submit_invoice",
+    }
+    critical_tools = {
+        "modify_policy", "modify_policy_rules", "revoke_agent",
+        "suspend_agent", "delete_supplier", "modify_audit",
+    }
+    if tool_name in financial_tools:
+        blocked = True
+        details["policy"] = "financial_action_requires_human_approval"
+    if tool_name in critical_tools:
+        blocked = True
+        details["policy"] = "critical_action_requires_admin"
+
     if scenario.payload.get("classification") == "critical":
         blocked = True
         details["policy"] = "critical_action_requires_admin"
