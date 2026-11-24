@@ -1,0 +1,88 @@
+version: 1
+name: default
+description: Default SentryFlow security policy
+
+rules:
+  - id: deny_all_financial_without_approval
+    description: All financial actions require human approval
+    match:
+      classification: financial
+    action: escalate
+    required_role: finance_approver
+    priority: 100
+
+  - id: deny_critical_without_admin
+    description: Critical actions require security admin
+    match:
+      classification: critical
+    action: escalate
+    required_role: security_admin
+    priority: 90
+
+  - id: high_amount_escalation
+    description: Transactions above threshold require approval
+    match:
+      classification: financial
+      amount_minor_gte: 1000000  # $10,000.00
+    action: escalate
+    required_role: finance_approver
+    priority: 85
+
+  - id: bank_detail_change_escalation
+    description: Bank detail changes always require approval
+    match:
+      tool_name: update_bank_details
+    action: escalate
+    required_role: finance_approver
+    priority: 95
+
+  - id: new_supplier_approval
+    description: New supplier registration requires admin
+    match:
+      tool_name: register_supplier
+    action: escalate
+    required_role: security_admin
+    priority: 80
+
+  - id: allow_read_operations
+    description: Read-only operations are generally allowed
+    match:
+      classification: read_only
+    action: allow
+    priority: 10
+
+  - id: allow_write_with_capability
+    description: Write operations allowed if agent has capability
+    match:
+      classification: write
+    action: allow
+    conditions:
+      - agent_has_capability: true
+    priority: 20
+
+  - id: deny_suspended_agents
+    description: Suspended or revoked agents cannot perform any action
+    match:
+      agent_status:
+        - suspended
+        - revoked
+    action: deny
+    reason: Agent is suspended or revoked
+    priority: 200
+
+  - id: injection_detected_escalate
+    description: Escalate when injection detected in context
+    match:
+      injection_score_gte: 70
+    action: escalate
+    required_role: security_analyst
+    priority: 150
+
+thresholds:
+  max_amount_auto_approve_minor: 100000  # $1,000.00
+  injection_score_escalate: 70
+  injection_score_deny: 90
+  rate_limit_per_minute: 60
+  rate_limit_financial_per_hour: 10
+  approval_expiry_minutes: 30
+  max_escalation_levels: 2

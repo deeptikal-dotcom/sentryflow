@@ -1,0 +1,176 @@
+version: "3.9"
+
+networks:
+  trusted-net:
+    driver: bridge
+  agent-net:
+    driver: bridge
+  inference-net:
+    driver: bridge
+  lab-net:
+    driver: bridge
+    internal: true  # no external access
+
+services:
+  # === TRUSTED ZONE ===
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: sentryflow-gateway
+    networks:
+      - trusted-net
+      - agent-net       # receives requests from agents
+      - inference-net   # calls ollama for optional injection classifier
+    ports:
+      - "8000:8000"
+    volumes:
+      - gateway-data:/app/data/db
+    environment:
+      - DATABASE_URL=sqlite:////app/data/db/sentryflow.db
+      - OLLAMA_BASE_URL=http://ollama-trusted:11434
+    env_file:
+      - .env
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    mem_limit: 1g
+    cpus: 2.0
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8000/api/v1/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: sentryflow-frontend
+    networks:
+      - trusted-net
+    ports:
+      - "3000:3000"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    mem_limit: 256m
+    cpus: 0.5
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=50M
+      - /var/run:size=10M
+      - /tmp:size=50M
+    restart: unless-stopped
+
+  # === INFERENCE ZONE ===
+
+  ollama-trusted:
+    image: ollama/ollama:latest
+    container_name: sentryflow-ollama-trusted
+    networks:
+      - inference-net
+    volumes:
+      - ollama-models:/root/.ollama
+    mem_limit: 8g
+    cpus: 3.0
+    restart: unless-stopped
+
+  ollama-agent:
+    image: ollama/ollama:latest
+    container_name: sentryflow-ollama-agent
+    networks:
+      - agent-net
+    volumes:
+      - ollama-models:/root/.ollama:ro  # read-only shared models
+    mem_limit: 8g
+    cpus: 3.0
+    restart: unless-stopped
+
+  # === UNTRUSTED ZONE ===
+
+  agent:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: sentryflow-agent
+    command: ["python", "-m", "backend.agent_runner"]
+    networks:
+      - agent-net      # can reach gateway and ollama-agent ONLY
+    environment:
+      - OLLAMA_BASE_URL=http://ollama-agent:11434
+      - GATEWAY_URL=http://gateway:8000
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 2g
+    cpus: 1.0
+    read_only: true
+    tmpfs:
+      - /tmp:size=200M
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  # === LAB ZONE (fully isolated) ===
+
+  lab:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: sentryflow-lab
+    command: ["uvicorn", "backend.lab.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    networks:
+      - lab-net
+    ports:
+      - "8001:8001"
+    volumes:
+      - lab-data:/app/data/lab
+    environment:
+      - DATABASE_URL=sqlite:////app/data/lab/lab.db
+      - OLLAMA_BASE_URL=http://ollama-lab:11434
+      - LAB_MODE=true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    mem_limit: 2g
+    cpus: 2.0
+    read_only: true
+    tmpfs:
+      - /tmp:size=200M
+    restart: unless-stopped
+
+  ollama-lab:
+    image: ollama/ollama:latest
+    container_name: sentryflow-ollama-lab
+    networks:
+      - lab-net
+    volumes:
+      - ollama-models:/root/.ollama:ro
+    mem_limit: 8g
+    cpus: 3.0
+    restart: unless-stopped
+
+volumes:
+  gateway-data:
+  lab-data:
+  ollama-models:

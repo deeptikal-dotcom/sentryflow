@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentryflow"
+version = "0.1.0"
+description = "SentryFlow — Agentic Transaction Security Platform"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "sqlalchemy==2.0.36",
+    "alembic==1.14.1",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "cryptography==50.0.2",
+    "argon2-cffi==23.1.0",
+    "python-jose[cryptography]==3.3.0",
+    "pyyaml==6.0.2",
+    "httpx==0.28.1",
+    "websockets==14.1",
+    "python-multipart==0.0.20",
+    "aiofiles==24.1.0",
+    "pypdf==5.1.0",
+    "pdfplumber==0.11.4",
+    "pytesseract==0.3.13",
+    "Pillow==11.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "httpx",
+    "ruff==0.8.6",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*", "attacks*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "security: security invariant tests",
+    "integration: integration tests requiring full pipeline",
+    "model: tests requiring a running Ollama instance",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "S", "B"]
+ignore = ["S101"]  # allow assert in tests

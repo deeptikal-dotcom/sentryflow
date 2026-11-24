@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --sf-midnight: #0B1424;
+  --sf-teal: #2DD4BF;
+  --sf-teal-dark: #14B8A6;
+  --sf-slate: #1E293B;
+  --sf-slate-light: #334155;
+  --sf-text: #F1F5F9;
+  --sf-text-muted: #94A3B8;
+  --sf-danger: #EF4444;
+  --sf-warning: #F59E0B;
+  --sf-success: #10B981;
+}
+
+body {
+  margin: 0;
+  background-color: var(--sf-midnight);
+  color: var(--sf-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
