@@ -35,14 +35,30 @@
 - 2026-11-24: Fixed attack lab ScanResult bug (was treating dataclass as dict)
 - 2026-11-24: End-to-end integration tests (11 tests covering full pipeline)
 - 2026-11-24: 137 tests passing
+- 2026-11-24: Real LLM inference (Ollama v0.40.18, Llama 3.2 3B, 17.7 tok/s CPU)
+- 2026-11-24: Auth token passthrough (agent runner → gateway → executor)
+- 2026-11-24: Tool classification fixes (financial, critical, write, read_only; unknown defaults to write)
+- 2026-11-24: 100% attack block rate (10/10 scenarios via gateway policy engine)
+- 2026-11-24: 206 tests passing
+- 2026-11-24: GitHub push to deeptikal-dotcom/sentryflow (private)
+- 2026-11-24: CI pipeline passing (test, frontend, docker jobs)
+- 2026-11-24: Release v1.0.0-mvp tagged
+- 2026-11-24: Injection detector improvements (HTML comment patterns, override/skip flexibility)
+- 2026-11-24: Lab proxy uses real gateway _classify_tool() for accurate results
+- 2026-11-24: Browser verification with Playwright (12 screenshots captured)
+- 2026-11-24: Fresh-clone test passed (Docker build, test suite)
+- 2026-11-24: Offline verification confirmed (zero paid APIs)
+- 2026-11-24: All documentation updated
 
-### Next Steps
-- Phase 3: Trust, Audit & Crypto enhancements
-  - ML-DSA-65 signed execution receipts (when PQC available)
-  - Audit checkpoints at configurable intervals
-  - Field-level encryption for sensitive tool call parameters
-- Phase 4: Polish & Demo
-  - Frontend: wire agent task submission UI
-  - Frontend: live WebSocket feed on dashboard
-  - Docker: verify full containerized deployment
-  - Attack lab: integrate with actual gateway (not just injection detector)
+### Status: MVP Complete
+
+Repository: https://github.com/deeptikal-dotcom/sentryflow (private)
+Release: v1.0.0-mvp
+
+### Post-MVP Roadmap
+- PostgreSQL migration for production scale
+- Automated key rotation
+- Real ERP/payment gateway integration
+- Playwright E2E test suite in CI
+- GPU-accelerated LLM inference
+- Horizontal scaling with distributed state

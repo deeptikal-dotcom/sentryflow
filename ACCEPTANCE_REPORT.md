@@ -198,14 +198,10 @@ All 16 capabilities verified against actual source code:
 |------|--------|
 | Branch | `main` (renamed from `master`) |
 | CI workflow | `.github/workflows/ci.yml` — test, frontend, docker jobs |
-| Latest commit | `ceed77d` — Real LLM inference, 100% attack block rate |
-| Remote push | **PENDING** — Requires user to authenticate GitHub CLI and push |
-
-**User action required:**
-```bash
-gh auth login            # Authenticate with correct GitHub account
-gh repo create sentryflow --private --source=. --push
-```
+| Latest commit | Injection detection + lab classification fixes |
+| Remote push | **DONE** — Pushed to `deeptikal-dotcom/sentryflow` (private) |
+| CI status | **PASS** — All 3 jobs (test, frontend, docker) green |
+| Release | **v1.0.0-mvp** — Tagged and published |
 
 ## Section 11: Documentation
 
@@ -240,5 +236,73 @@ SentryFlow meets its core security principle: **an unauthorized business action 
 - Zero paid APIs or cloud services
 - Professional documentation complete
 
-**The project is ready for release**, pending:
-1. User authenticates GitHub CLI and pushes to their private repository
+## Section 13: Browser Verification
+
+Automated Playwright (Chromium headless) verification of all pages and API endpoints:
+
+| Check | Result |
+|-------|--------|
+| Login page (UI) | **PASS** — SentryFlow branding, Midnight Navy + Cyber Teal |
+| Login authentication | **PASS** — JWT token, redirect to dashboard |
+| Dashboard metrics | **PASS** — 5 agents, 11 approvals, 39 audit events, PQC status |
+| Agents page | **PASS** — 5 agent types displayed |
+| Agent task submission (API) | **PASS** — LLM inference, gateway decision returned |
+| Suppliers page | **PASS** — 20 suppliers with verification status |
+| Attack Lab page | **PASS** — 10 scenarios with severity badges |
+| Attack block rate (gateway) | **PASS** — 10/10 (100%) blocked |
+| Approvals page | **PASS** — Pending/history endpoints functional |
+| Audit trail page | **PASS** — Hash-chain integrity verified |
+| PQC status API | **PASS** — ML-DSA-65 + ML-KEM-768 available |
+| ML-KEM-768 demo | **PASS** — Key exchange successful |
+| WebSocket ticket | **PASS** — Single-use ticket generated |
+| Documents API | **PASS** — Endpoint functional |
+| Policy engine | **PASS** — 10 YAML rules loaded |
+| Responsive design | **PASS** — Mobile viewport renders correctly |
+| Navigation | **PASS** — 9 sidebar links |
+| Console errors | **PASS** — No critical errors |
+| 404 handling | **PASS** — Graceful fallback |
+
+Screenshots captured in `docs/screenshots/` (12 PNG files, 2x resolution).
+
+## Section 14: Fresh-Clone Test
+
+| Check | Result |
+|-------|--------|
+| `git clone` from GitHub | **PASS** — All files present including `backend/models/` |
+| `.env.example` present | **PASS** |
+| `docker compose config` | **PASS** — 8 services, 4 networks |
+| `docker compose build gateway` | **PASS** — Image built successfully |
+| Unit tests (87) | **PASS** — From cloned directory |
+| Security tests (101) | **PASS** — From cloned directory |
+| Python version note | Python 3.11 required for `pip install` (CI uses 3.11; pydantic-core lacks 3.15 wheels) |
+
+## Section 15: Offline Verification
+
+After initial dependency and model downloads, all core operations work offline:
+
+| Check | Result |
+|-------|--------|
+| Health endpoint | **PASS** — No network required |
+| JWT authentication | **PASS** — Local crypto |
+| Gateway policy evaluation | **PASS** — Local YAML rules |
+| PQC crypto operations | **PASS** — Local OpenSSL 4.1.0 |
+| Audit chain integrity | **PASS** — Local SQLite |
+| Dashboard with real data | **PASS** — All metrics from local DB |
+| Paid API calls detected | **NONE** — Zero external service dependencies |
+
+## Section 16: Test Count Reconciliation
+
+| Suite | Count | CI | Local |
+|-------|-------|-----|-------|
+| Unit tests | 87 | **Run** | **Run** |
+| Security tests | 101 | Run (after unit) | **Run** |
+| Integration tests | 18 | Run (after security) | **Run** |
+| **Total** | **206** | **87+** (gated) | **206** |
+
+CI runs all three suites sequentially; if unit tests fail, subsequent suites are skipped.
+The earlier "188 tests" count was from a point before 18 additional tests were added.
+
+**The project is ready for release.**
+
+Repository: https://github.com/deeptikal-dotcom/sentryflow (private)
+Release: v1.0.0-mvp
