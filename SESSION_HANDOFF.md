@@ -1,38 +1,49 @@
 # SentryFlow — Session Handoff
 
-## Last Session: 2026-11-23
+## Last Session: 2026-11-24
 
 ### What Was Done
-- Full project scaffolding for SentryFlow agentic transaction security platform
-- Architecture approved after two review cycles with 16 mandatory corrections incorporated
-- Complete database schema implemented (20+ tables with integer currency, 3-way matching, HMAC fingerprints)
-- Authentication system with argon2 password hashing, JWT tokens, WebSocket tickets, 6 RBAC roles
-- Docker Compose with 4-network isolation (trusted-net, agent-net, inference-net, lab-net)
-- Container hardening (non-root, dropped capabilities, resource limits, read-only fs)
+- Built the Trusted Executor module (`backend/executor/executor.py`) — the missing piece that actually performs business actions after gateway authorization
+- Added Executor API endpoint (`/api/v1/executor/run`) for direct execution requests
+- Added auto-execute capability to gateway (`auto_execute` flag on `/api/v1/gateway/evaluate`)
+- Gateway now persists proper ToolCall records and PolicyVersion references (was previously generating IDs without DB records, breaking FK constraints)
+- Fixed attack lab bug: `run_scenario` was treating `ScanResult` dataclass as a dict
+- Wrote 11 end-to-end integration tests covering the full pipeline:
+  - Read-only flow (allow, auto-execute)
+  - Financial escalation (requires approval)
+  - Full approval lifecycle (escalate → approve → execute)
+  - Denial flow (deny blocks execution)
+  - Suspended agent blocking
+  - Injection detection in context
+  - Clean context allowed
+  - Replay protection (single-use approvals)
+  - Audit trail creation and chain integrity
 
 ### Current State
-- Phase 1A in progress
-- Dependencies installing
-- Tests not yet run
+- Phase 2 complete — full end-to-end pipeline working
+- 137 tests passing (126 existing + 11 new integration tests)
+- All code on `master` branch, not yet pushed
 
 ### Exact Next Steps
-1. Verify all tests pass
-2. Verify Docker containers start with network isolation
-3. Install Ollama and benchmark a model
-4. Verify PQC (ML-DSA/ML-KEM) availability
-5. Create initial commit and push to private GitHub repo `sentryflow`
-6. Begin Phase 1C: synthetic data generator and simulated systems
-7. Begin Phase 2: security gateway (policy engine, injection detection)
+1. Frontend: Add agent task submission form (trigger agent actions from UI)
+2. Frontend: Wire WebSocket live feed into dashboard
+3. Phase 3A: Enable ML-DSA-65 signed execution receipts when PQC is available
+4. Phase 3B: Add audit checkpoints at configurable intervals
+5. Phase 4C: Integrate attack lab with actual gateway (run scenarios through real pipeline)
+6. Docker: Verify full containerized deployment with network isolation
+7. Push to GitHub and open PR
 
 ### Key Decisions Made
-- Product name: SentryFlow
-- PQC library: pyca/cryptography >= 48 (not liboqs)
-- Architecture: Modular monolith with process-level container isolation
-- LLM: Ollama with Phi-4-mini or Llama 3.2 3B (CPU-only, sequential execution)
-- Database: SQLite with WAL mode (all money as integer minor-currency units)
-- Gateway owns all authorization and audit; Executor owns business data writes
-- WebSocket auth via short-lived single-use tickets (not long-lived JWTs)
-- Bank account identifiers use HMAC-SHA256 (not plain SHA-256)
+- Executor is a service-layer class (not a separate FastAPI app) instantiated per-request — simpler than a separate container for MVP
+- Gateway auto-execute is opt-in via `auto_execute: true` to preserve backwards compatibility
+- ToolCall records are now persisted in DB before approval creation (required by FK constraints)
+- PolicyVersion is auto-created from default.yaml on first gateway evaluation
 
-### Files Modified
-- All files are new (greenfield project)
+### Files Modified/Created
+- NEW: `backend/executor/__init__.py`
+- NEW: `backend/executor/executor.py`
+- NEW: `backend/api/executor.py`
+- NEW: `tests/integration/test_pipeline.py`
+- MODIFIED: `backend/api/gateway.py` (ToolCall persistence, PolicyVersion creation, auto-execute, Executor import)
+- MODIFIED: `backend/main.py` (executor router registration)
+- MODIFIED: `backend/lab/app.py` (ScanResult attribute access fix)

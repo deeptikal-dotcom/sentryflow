@@ -25,8 +25,10 @@ from backend.audit.audit_logger import AuditLogger
 from backend.database import get_session
 from backend.models.agent import Agent
 from backend.models.policy import PolicyVersion
+from backend.models.tool_call import ToolCall
 from backend.models.user import User
 from backend.security.injection_detector import InjectionDetector
+from backend.executor.executor import Executor
 from backend.trust.approval_manager import ApprovalManager
 from backend.trust.crypto import canonical_hash, canonical_json
 from backend.trust.policy_engine import PolicyDecision, PolicyEngine, ToolCallContext
@@ -43,6 +45,14 @@ class ToolCallRequest(BaseModel):
     parameters: dict[str, Any]
     context: str | None = None
     session_id: str = ""
+    auto_execute: bool = False
+
+
+class ExecutionResult(BaseModel):
+    receipt_id: str = ""
+    status: str = ""
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
 
 class ToolCallResponse(BaseModel):
@@ -54,6 +64,7 @@ class ToolCallResponse(BaseModel):
     required_role: str | None = None
     reason: str | None = None
     rule_trace: list[dict] | None = None
+    execution: ExecutionResult | None = None
 
 
 @router.post("/evaluate", response_model=ToolCallResponse)
@@ -103,6 +114,31 @@ async def evaluate_tool_call(
     policy_result = engine.evaluate(ctx)
 
     tc_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    policy_version_id = await _ensure_policy_version(
+        session, engine, user.id
+    )
+
+    tc_record = ToolCall(
+        id=tc_id,
+        agent_id=body.agent_id,
+        session_id=body.session_id or "default",
+        tool_name=body.tool_name,
+        parameters_hash=canonical_hash(body.parameters),
+        parameters_encrypted=json.dumps(body.parameters),
+        classification=classification,
+        injection_context=json.dumps({"score": injection_score}) if injection_score > 0 else None,
+        policy_version_id=policy_version_id,
+        policy_result=policy_result.decision.value,
+        policy_rule_trace=json.dumps(policy_result.rule_trace) if policy_result.rule_trace else None,
+        risk_score=policy_result.risk_score,
+        status=policy_result.decision.value,
+        created_at=now,
+    )
+    session.add(tc_record)
+    await session.flush()
+
     response = ToolCallResponse(
         tool_call_id=tc_id,
         decision=policy_result.decision.value,
@@ -118,7 +154,7 @@ async def evaluate_tool_call(
             parameters=body.parameters,
             requesting_agent_id=body.agent_id,
             required_role=policy_result.required_role or "finance_approver",
-            policy_version_id=str(engine.version),
+            policy_version_id=policy_version_id,
         )
         response.approval_required = True
         response.approval_id = approval.id
@@ -133,6 +169,23 @@ async def evaluate_tool_call(
         rule_trace=policy_result.rule_trace,
         risk_score=policy_result.risk_score,
     )
+
+    if body.auto_execute and policy_result.decision == PolicyDecision.ALLOW:
+        executor = Executor()
+        receipt = await executor.execute(
+            session,
+            tool_call_id=tc_id,
+            tool_name=body.tool_name,
+            parameters=body.parameters,
+            actor_id=body.agent_id,
+        )
+        response.execution = ExecutionResult(
+            receipt_id=receipt.receipt_id,
+            status=receipt.status,
+            result=receipt.result or None,
+            error=receipt.error,
+        )
+
     await session.commit()
 
     return response
@@ -160,6 +213,36 @@ async def list_policies(
             for p in policies
         ]
     }
+
+
+async def _ensure_policy_version(
+    session: AsyncSession, engine: PolicyEngine, created_by: str
+) -> str:
+    content_hash = engine.content_hash
+    result = await session.execute(
+        select(PolicyVersion).where(PolicyVersion.content_hash == content_hash)
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing.id
+
+    from pathlib import Path
+    pv_id = str(uuid.uuid4())
+    rules_path = Path(__file__).parent.parent.parent / "data" / "policies" / "default.yaml"
+    rules_text = rules_path.read_text() if rules_path.exists() else ""
+    pv = PolicyVersion(
+        id=pv_id,
+        version=engine.version,
+        name=engine.name,
+        rules_yaml=rules_text,
+        content_hash=content_hash,
+        created_by=created_by,
+        active=True,
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(pv)
+    await session.flush()
+    return pv_id
 
 
 def _classify_tool(tool_name: str, params: dict) -> str:
