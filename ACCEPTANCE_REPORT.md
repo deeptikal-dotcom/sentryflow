@@ -198,13 +198,13 @@ All 16 capabilities verified against actual source code:
 |------|--------|
 | Branch | `main` (renamed from `master`) |
 | CI workflow | `.github/workflows/ci.yml` — test, frontend, docker jobs |
-| Commit | `38e71da` — 32 files, 1001 insertions |
-| Remote push | **PENDING** — Requires user to add remote and push |
+| Latest commit | `ceed77d` — Real LLM inference, 100% attack block rate |
+| Remote push | **PENDING** — Requires user to authenticate GitHub CLI and push |
 
 **User action required:**
 ```bash
-git remote add origin https://github.com/SreenivasReddy037/sentryflow.git
-git push -u origin main
+gh auth login            # Authenticate with correct GitHub account
+gh repo create sentryflow --private --source=. --push
 ```
 
 ## Section 11: Documentation
