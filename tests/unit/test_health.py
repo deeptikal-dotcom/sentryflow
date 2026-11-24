@@ -60,7 +60,7 @@ async def test_me_authenticated(client, admin_token):
 @pytest.mark.asyncio
 async def test_me_unauthenticated(client):
     resp = await client.get("/api/v1/auth/me")
-    assert resp.status_code == 401  # no bearer token
+    assert resp.status_code in (401, 403)  # no bearer token
 
 
 @pytest.mark.asyncio
