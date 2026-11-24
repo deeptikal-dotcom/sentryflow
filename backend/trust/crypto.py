@@ -58,6 +58,61 @@ def detect_pqc_capabilities() -> PQCCapabilities:
     return caps
 
 
+# --- ML-DSA-65 ---
+
+def generate_mldsa65_keypair() -> tuple[bytes, bytes]:
+    from cryptography.hazmat.primitives.asymmetric import mldsa
+    private_key = mldsa.MLDSA65PrivateKey.generate()
+    seed = private_key.private_bytes_raw()
+    pub_bytes = private_key.public_key().public_bytes_raw()
+    return seed, pub_bytes
+
+
+def sign_mldsa65(seed: bytes, data: bytes) -> bytes:
+    from cryptography.hazmat.primitives.asymmetric import mldsa
+    private_key = mldsa.MLDSA65PrivateKey.from_seed_bytes(seed)
+    return private_key.sign(data)
+
+
+def verify_mldsa65(public_key_bytes: bytes, signature: bytes, data: bytes) -> bool:
+    from cryptography.hazmat.primitives.asymmetric import mldsa
+    public_key = mldsa.MLDSA65PublicKey.from_public_bytes(public_key_bytes)
+    try:
+        public_key.verify(signature, data)
+        return True
+    except Exception:
+        return False
+
+
+# --- ML-KEM-768 ---
+
+@dataclass
+class MLKEMEncapsulationResult:
+    ciphertext: bytes
+    shared_secret: bytes
+
+
+def generate_mlkem768_keypair() -> tuple[bytes, bytes]:
+    from cryptography.hazmat.primitives.asymmetric import mlkem
+    private_key = mlkem.MLKEM768PrivateKey.generate()
+    seed = private_key.private_bytes_raw()
+    pub_bytes = private_key.public_key().public_bytes_raw()
+    return seed, pub_bytes
+
+
+def mlkem768_encapsulate(public_key_bytes: bytes) -> MLKEMEncapsulationResult:
+    from cryptography.hazmat.primitives.asymmetric import mlkem
+    public_key = mlkem.MLKEM768PublicKey.from_public_bytes(public_key_bytes)
+    shared_secret, ciphertext = public_key.encapsulate()
+    return MLKEMEncapsulationResult(ciphertext=ciphertext, shared_secret=shared_secret)
+
+
+def mlkem768_decapsulate(seed: bytes, ciphertext: bytes) -> bytes:
+    from cryptography.hazmat.primitives.asymmetric import mlkem
+    private_key = mlkem.MLKEM768PrivateKey.from_seed_bytes(seed)
+    return private_key.decapsulate(ciphertext)
+
+
 # --- Ed25519 ---
 
 def generate_ed25519_keypair() -> tuple[bytes, bytes]:

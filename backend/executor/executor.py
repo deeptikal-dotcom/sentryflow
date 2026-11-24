@@ -30,6 +30,8 @@ from backend.trust.approval_manager import ApprovalError, ApprovalManager
 from backend.trust.crypto import (
     canonical_hash,
     canonical_json,
+    detect_pqc_capabilities,
+    hybrid_sign,
     sign_ed25519,
 )
 
@@ -51,6 +53,8 @@ class ExecutionReceipt:
     result: dict = field(default_factory=dict)
     approval_id: str | None = None
     signature: str | None = None  # base64 Ed25519 over canonical receipt
+    mldsa_signature: str | None = None  # base64 ML-DSA-65 when PQC available
+    pqc_signed: bool = False
     executed_at: str = ""
     error: str | None = None
 
@@ -59,8 +63,10 @@ class Executor:
     def __init__(
         self,
         signing_key: bytes | None = None,
+        mldsa_private_key: bytes | None = None,
     ):
         self._signing_key = signing_key
+        self._mldsa_private_key = mldsa_private_key
         self._erp = ERPSimulator()
         self._payments = PaymentSimulator()
         self._approvals = ApprovalManager()
@@ -133,7 +139,7 @@ class Executor:
         )
 
         if self._signing_key:
-            receipt.signature = self._sign_receipt(receipt)
+            self._sign_receipt(receipt)
 
         await self._audit.log(
             session, "execution_completed", "executor", actor_id,
@@ -314,7 +320,7 @@ class Executor:
             "note": "Contract data returned",
         }
 
-    def _sign_receipt(self, receipt: ExecutionReceipt) -> str:
+    def _sign_receipt(self, receipt: ExecutionReceipt) -> None:
         data = canonical_json({
             "receipt_id": receipt.receipt_id,
             "tool_call_id": receipt.tool_call_id,
@@ -324,5 +330,17 @@ class Executor:
             "approval_id": receipt.approval_id,
             "executed_at": receipt.executed_at,
         })
-        sig = sign_ed25519(self._signing_key, data)
-        return base64.b64encode(sig).decode("ascii")
+
+        mldsa_key = None
+        if self._mldsa_private_key:
+            try:
+                from cryptography.hazmat.primitives.asymmetric import mldsa
+                mldsa_key = mldsa.MLDSA65PrivateKey.from_seed_bytes(self._mldsa_private_key)
+            except Exception:
+                pass
+
+        hsig = hybrid_sign(self._signing_key, data, mldsa_private=mldsa_key)
+        receipt.signature = hsig.ed25519_sig
+        if hsig.mldsa_sig:
+            receipt.mldsa_signature = hsig.mldsa_sig
+            receipt.pqc_signed = True

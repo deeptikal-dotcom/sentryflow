@@ -12,11 +12,17 @@ from backend.trust.crypto import (
     detect_pqc_capabilities,
     encrypt_field,
     generate_ed25519_keypair,
+    generate_mldsa65_keypair,
+    generate_mlkem768_keypair,
     hmac_fingerprint,
     hybrid_sign,
     hybrid_verify,
+    mlkem768_decapsulate,
+    mlkem768_encapsulate,
     sign_ed25519,
+    sign_mldsa65,
     verify_ed25519,
+    verify_mldsa65,
 )
 
 
@@ -137,8 +143,92 @@ class TestHybridSignature:
             hybrid_sign(priv, b"data", pqc_mode="required")
 
 
+class TestMLDSA65:
+    def test_keypair_generation(self):
+        priv, pub = generate_mldsa65_keypair()
+        assert len(priv) > 0
+        assert len(pub) > 0
+
+    def test_sign_and_verify(self):
+        priv, pub = generate_mldsa65_keypair()
+        data = b"post-quantum signed receipt"
+        sig = sign_mldsa65(priv, data)
+        assert verify_mldsa65(pub, sig, data)
+
+    def test_verify_fails_on_wrong_data(self):
+        priv, pub = generate_mldsa65_keypair()
+        sig = sign_mldsa65(priv, b"original")
+        assert not verify_mldsa65(pub, sig, b"tampered")
+
+    def test_verify_fails_on_wrong_key(self):
+        priv1, _ = generate_mldsa65_keypair()
+        _, pub2 = generate_mldsa65_keypair()
+        sig = sign_mldsa65(priv1, b"data")
+        assert not verify_mldsa65(pub2, sig, b"data")
+
+
+class TestHybridSignatureWithPQC:
+    def test_hybrid_sign_with_mldsa(self):
+        from cryptography.hazmat.primitives.asymmetric import mldsa
+        ed_priv, ed_pub = generate_ed25519_keypair()
+        mldsa_key = mldsa.MLDSA65PrivateKey.generate()
+        data = b"hybrid signed data"
+        sig = hybrid_sign(ed_priv, data, mldsa_private=mldsa_key)
+        assert sig.ed25519_sig is not None
+        assert sig.mldsa_sig is not None
+        assert hybrid_verify(ed_pub, data, sig, mldsa_public=mldsa_key.public_key())
+
+    def test_hybrid_verify_requires_both_when_present(self):
+        from cryptography.hazmat.primitives.asymmetric import mldsa
+        ed_priv, ed_pub = generate_ed25519_keypair()
+        mldsa_key = mldsa.MLDSA65PrivateKey.generate()
+        mldsa_key2 = mldsa.MLDSA65PrivateKey.generate()
+        data = b"test"
+        sig = hybrid_sign(ed_priv, data, mldsa_private=mldsa_key)
+        assert not hybrid_verify(ed_pub, data, sig, mldsa_public=mldsa_key2.public_key())
+
+    def test_required_mode_enforces_both(self):
+        ed_priv, ed_pub = generate_ed25519_keypair()
+        data = b"test"
+        sig = hybrid_sign(ed_priv, data, pqc_mode="optional")
+        assert not hybrid_verify(ed_pub, data, sig, pqc_mode="required")
+
+
+class TestMLKEM768:
+    def test_keypair_generation(self):
+        priv, pub = generate_mlkem768_keypair()
+        assert len(priv) > 0
+        assert len(pub) > 0
+
+    def test_encapsulate_decapsulate(self):
+        priv, pub = generate_mlkem768_keypair()
+        result = mlkem768_encapsulate(pub)
+        decap_secret = mlkem768_decapsulate(priv, result.ciphertext)
+        assert result.shared_secret == decap_secret
+
+    def test_different_keypair_fails(self):
+        priv1, _ = generate_mlkem768_keypair()
+        _, pub2 = generate_mlkem768_keypair()
+        result = mlkem768_encapsulate(pub2)
+        decap_secret = mlkem768_decapsulate(priv1, result.ciphertext)
+        assert result.shared_secret != decap_secret
+
+    def test_shared_secret_length(self):
+        priv, pub = generate_mlkem768_keypair()
+        result = mlkem768_encapsulate(pub)
+        assert len(result.shared_secret) == 32
+
+
 class TestPQCDetection:
     def test_detect_returns_capabilities(self):
         caps = detect_pqc_capabilities()
         assert isinstance(caps.mldsa_available, bool)
         assert isinstance(caps.mlkem_available, bool)
+
+    def test_mldsa_available(self):
+        caps = detect_pqc_capabilities()
+        assert caps.mldsa_available is True
+
+    def test_mlkem_available(self):
+        caps = detect_pqc_capabilities()
+        assert caps.mlkem_available is True

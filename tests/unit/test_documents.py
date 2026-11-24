@@ -106,3 +106,62 @@ class TestDocumentProcessor:
         data = b"Standard invoice from Acme Corp. Amount: $5,000. Payment terms: Net 30."
         result = self.processor.process("invoice.txt", data)
         assert result.status == "processed"
+
+
+class TestPDFExtraction:
+    """Test PDF extraction with real (minimal) PDF files."""
+
+    def setup_method(self):
+        self.processor = DocumentProcessor()
+
+    def test_valid_pdf_extracted(self):
+        from pypdf import PdfWriter
+        from io import BytesIO
+        writer = PdfWriter()
+        writer.add_blank_page(width=72, height=72)
+        buf = BytesIO()
+        writer.write(buf)
+        pdf_bytes = buf.getvalue()
+
+        result = self.processor.process("test.pdf", pdf_bytes)
+        assert result.detected_mime == "application/pdf"
+        assert result.page_count == 1
+        assert result.status == "processed"
+
+    def test_oversized_pdf_page_count(self):
+        from pypdf import PdfWriter
+        from io import BytesIO
+        writer = PdfWriter()
+        for _ in range(5):
+            writer.add_blank_page(width=72, height=72)
+        buf = BytesIO()
+        writer.write(buf)
+        pdf_bytes = buf.getvalue()
+
+        result = self.processor.process("multi.pdf", pdf_bytes)
+        assert result.page_count == 5
+        assert result.status == "processed"
+
+
+class TestDocumentProvenance:
+    """Verify content hashing provides document provenance chain."""
+
+    def setup_method(self):
+        self.processor = DocumentProcessor()
+
+    def test_same_content_same_hash(self):
+        data = b"Invoice #123 from Acme"
+        r1 = self.processor.process("a.txt", data)
+        r2 = self.processor.process("b.txt", data)
+        assert r1.content_hash == r2.content_hash
+
+    def test_modified_content_different_hash(self):
+        r1 = self.processor.process("a.txt", b"Invoice #123 amount $5000")
+        r2 = self.processor.process("a.txt", b"Invoice #123 amount $50000")
+        assert r1.content_hash != r2.content_hash
+
+    def test_different_ids_per_processing(self):
+        data = b"Same data"
+        r1 = self.processor.process("a.txt", data)
+        r2 = self.processor.process("a.txt", data)
+        assert r1.document_id != r2.document_id
