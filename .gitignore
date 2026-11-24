@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+*.pem
+*.key
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Docker
+docker-compose.override.yml
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+test-results/
+
+# Logs
+*.log
+
+# Ollama models (downloaded separately)
+models/
+
+# Keys (never commit)
+keys/
+*.secret
