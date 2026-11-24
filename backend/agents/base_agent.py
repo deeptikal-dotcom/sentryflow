@@ -6,11 +6,10 @@ or payment systems. All tool calls go through the security gateway.
 """
 from __future__ import annotations
 
-import json
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 logger = logging.getLogger("sentryflow.agent")
 
@@ -58,8 +57,8 @@ class BaseAgent(ABC):
             agent_id=agent_id,
             agent_type=agent_type,
             capabilities=capabilities,
-            session_id=f"session-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
-            created_at=datetime.now(timezone.utc).isoformat(),
+            session_id=f"session-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
+            created_at=datetime.now(UTC).isoformat(),
         )
         self._gateway_url = gateway_url.rstrip("/")
         self._ollama_client = None

@@ -8,15 +8,13 @@ import base64
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.audit import AuditCheckpoint, AuditLog
 from backend.trust.crypto import canonical_json
-
 
 GENESIS_HASH = "0" * 64
 
@@ -51,7 +49,7 @@ class AuditLogger:
         )
         prev_hash = prev_result.scalar() or GENESIS_HASH
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         record_data = canonical_json({
             "sequence_num": new_seq,
@@ -133,7 +131,7 @@ class AuditLogger:
             except Exception:
                 pass
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         cp = AuditCheckpoint(
             id=str(uuid.uuid4()),
             sequence_from=seq_from,

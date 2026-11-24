@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Activity, Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { useWebSocket, type WSEvent } from '../lib/useWebSocket';
+import { useWebSocket } from '../lib/useWebSocket';
 import { api, type AuditEvent } from '../lib/api';
 
 export default function ActivityFeed() {

@@ -1,10 +1,10 @@
 """Supplier management API — registry, verification, bank detail tracking."""
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -88,10 +88,10 @@ async def verify_supplier(
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
-    from datetime import datetime, timezone
+    from datetime import datetime
     supplier.verified = True
     supplier.verified_by = user.id
-    supplier.updated_at = datetime.now(timezone.utc).isoformat()
+    supplier.updated_at = datetime.now(UTC).isoformat()
 
     await audit.log(
         session, "supplier_verified", "user", user.id,

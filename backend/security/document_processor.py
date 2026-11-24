@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 
 logger = logging.getLogger("sentryflow.documents")
@@ -45,7 +45,7 @@ FILE_SIGNATURES = {
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @dataclass
@@ -186,8 +186,8 @@ class DocumentProcessor:
 
     def _extract_image_ocr(self, data: bytes) -> str | None:
         try:
-            from PIL import Image
             import pytesseract
+            from PIL import Image
             img = Image.open(BytesIO(data))
             text = pytesseract.image_to_string(img)
             return text.strip() if text.strip() else None

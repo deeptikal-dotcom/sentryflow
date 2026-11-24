@@ -5,7 +5,6 @@ Tickets are obtained via POST /api/v1/auth/ws-ticket, valid for 30 seconds.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from typing import Any

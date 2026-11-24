@@ -9,13 +9,12 @@ Every agent tool call passes through this gateway. The gateway:
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,14 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.auth import get_current_user
 from backend.audit.audit_logger import AuditLogger
 from backend.database import get_session
+from backend.executor.executor import Executor
 from backend.models.agent import Agent
 from backend.models.policy import PolicyVersion
 from backend.models.tool_call import ToolCall
 from backend.models.user import User
 from backend.security.injection_detector import InjectionDetector
-from backend.executor.executor import Executor
 from backend.trust.approval_manager import ApprovalManager
-from backend.trust.crypto import canonical_hash, canonical_json
+from backend.trust.crypto import canonical_hash
 from backend.trust.policy_engine import PolicyDecision, PolicyEngine, ToolCallContext
 
 router = APIRouter()
@@ -117,7 +116,7 @@ async def evaluate_tool_call(
     policy_result = engine.evaluate(ctx)
 
     tc_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     policy_version_id = await _ensure_policy_version(
         session, engine, user.id
@@ -249,7 +248,7 @@ async def _ensure_policy_version(
         content_hash=content_hash,
         created_by=created_by,
         active=True,
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
     )
     session.add(pv)
     await session.flush()

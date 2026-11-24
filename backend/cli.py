@@ -5,7 +5,7 @@ import asyncio
 import secrets
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from argon2 import PasswordHasher
 
@@ -13,9 +13,10 @@ ph = PasswordHasher()
 
 
 async def _init_admin():
+    from sqlalchemy import select
+
     from backend.database import async_session_factory, init_db
     from backend.models.user import User
-    from sqlalchemy import select
 
     await init_db()
 
@@ -29,7 +30,7 @@ async def _init_admin():
             return
 
         password = secrets.token_urlsafe(16)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         user = User(
             id=str(uuid.uuid4()),
             username="admin",
@@ -46,9 +47,9 @@ async def _init_admin():
         print("=" * 50)
         print("SentryFlow — Initial Admin Created")
         print("=" * 50)
-        print(f"Username: admin")
+        print("Username: admin")
         print(f"Password: {password}")
-        print(f"Role:     security_admin")
+        print("Role:     security_admin")
         print("=" * 50)
         print("SAVE THIS PASSWORD. It will not be shown again.")
         print("=" * 50)

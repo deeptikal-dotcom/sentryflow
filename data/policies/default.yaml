@@ -78,6 +78,15 @@ rules:
     required_role: security_analyst
     priority: 150
 
+  - id: injection_tainted_write_escalate
+    description: Escalate write operations with any injection signal
+    match:
+      classification: write
+      injection_score_gte: 15
+    action: escalate
+    required_role: security_analyst
+    priority: 140
+
 thresholds:
   max_amount_auto_approve_minor: 100000  # $1,000.00
   injection_score_escalate: 70

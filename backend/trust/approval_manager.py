@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.approval import Approval
@@ -36,7 +36,7 @@ class ApprovalManager:
     ) -> Approval:
         canonical = canonical_json(parameters).decode("utf-8")
         c_hash = canonical_hash(parameters)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         approval = Approval(
             id=str(uuid.uuid4()),
@@ -76,7 +76,7 @@ class ApprovalManager:
         if approval.decision != "pending":
             raise ApprovalError(f"Approval already resolved: {approval.decision}")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if approval.expires_at and now > datetime.fromisoformat(approval.expires_at):
             approval.decision = "expired"
             raise ApprovalError("Approval has expired")
@@ -116,7 +116,7 @@ class ApprovalManager:
         if approval.decision != "approved":
             raise ApprovalError(f"Approval not approved: {approval.decision}")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if approval.expires_at and now > datetime.fromisoformat(approval.expires_at):
             approval.decision = "expired"
             raise ApprovalError("Approval expired before consumption")

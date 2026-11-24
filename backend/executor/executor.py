@@ -12,11 +12,9 @@ No LLM reasoning participates in execution decisions.
 """
 from __future__ import annotations
 
-import base64
-import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,16 +26,13 @@ from backend.simulation.erp_simulator import ERPSimulator
 from backend.simulation.payment_simulator import PaymentSimulator
 from backend.trust.approval_manager import ApprovalError, ApprovalManager
 from backend.trust.crypto import (
-    canonical_hash,
     canonical_json,
-    detect_pqc_capabilities,
     hybrid_sign,
-    sign_ed25519,
 )
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _uuid() -> str:
