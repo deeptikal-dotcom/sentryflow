@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
         return {"status": "healthy", "service": "sentryflow-gateway"}
 
     # Route registrations will be added as modules are implemented
-    from backend.api import auth, agents, suppliers, gateway, approvals, audit, dashboard, incidents
+    from backend.api import auth, agents, suppliers, gateway, approvals, audit, dashboard, incidents, documents
 
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(approvals.router, prefix="/api/v1/approvals", tags=["approvals"])
     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
     app.include_router(incidents.router, prefix="/api/v1/incidents", tags=["incidents"])
+    app.include_router(documents.router, prefix="/api/v1/documents", tags=["documents"])
     app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboard"])
 
     return app
