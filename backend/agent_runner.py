@@ -24,8 +24,8 @@ logging.basicConfig(
 logger = logging.getLogger("sentryflow.agent_runner")
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://gateway:8000")
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama-agent:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi4-mini:latest")
+OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 SYSTEM_PROMPT = """You are a procurement agent. You process business tasks by calling tools.
 You MUST respond with a JSON object containing exactly one tool call:
@@ -79,6 +79,7 @@ async def run_task_with_llm(
     ollama: OllamaClient,
     task: AgentTask,
     gateway_url: str,
+    auth_token: str | None = None,
 ) -> AgentRunResult:
     """Execute a task using LLM reasoning to generate tool calls."""
     import time
@@ -135,9 +136,14 @@ async def run_task_with_llm(
             if "context" in tool_call:
                 payload["context"] = str(tool_call["context"])
 
+            headers = {}
+            if auth_token:
+                headers["Authorization"] = f"Bearer {auth_token}"
+
             resp = await client.post(
                 f"{gateway_url}/api/v1/gateway/evaluate",
                 json=payload,
+                headers=headers,
             )
             resp.raise_for_status()
             decision = resp.json()
@@ -178,6 +184,7 @@ async def run_task_with_llm(
 async def run_task_deterministic(
     task: AgentTask,
     gateway_url: str,
+    auth_token: str | None = None,
 ) -> AgentRunResult:
     """Fallback: execute task without LLM using the structured agent classes."""
     import time
@@ -199,7 +206,7 @@ async def run_task_deterministic(
             error=f"Unknown agent type: {task.agent_type}",
         )
 
-    agent = agent_cls(agent_id=task.agent_id, gateway_url=gateway_url)
+    agent = agent_cls(agent_id=task.agent_id, gateway_url=gateway_url, auth_token=auth_token)
     try:
         result = await agent.process_task(task.parameters)
         elapsed = int((time.monotonic() - start) * 1000)
@@ -228,17 +235,17 @@ async def run_task_deterministic(
         )
 
 
-async def process_task(task: AgentTask, gateway_url: str) -> AgentRunResult:
+async def process_task(task: AgentTask, gateway_url: str, auth_token: str | None = None) -> AgentRunResult:
     """Try LLM-driven execution first, fall back to deterministic."""
     ollama = OllamaClient(base_url=OLLAMA_URL, model=OLLAMA_MODEL)
     try:
         healthy = await ollama.check_health()
         if healthy:
             logger.info(f"Ollama available — using LLM for task {task.task_id}")
-            return await run_task_with_llm(ollama, task, gateway_url)
+            return await run_task_with_llm(ollama, task, gateway_url, auth_token=auth_token)
         else:
             logger.warning("Ollama unavailable — using deterministic agent")
-            return await run_task_deterministic(task, gateway_url)
+            return await run_task_deterministic(task, gateway_url, auth_token=auth_token)
     finally:
         await ollama.close()
 

@@ -54,4 +54,30 @@
 - All benchmarks run on CPU-only (no GPU acceleration used or needed for crypto operations).
 - PQC algorithms are available natively via pyca/cryptography 50.0.2 linked against OpenSSL 4.1.0.
 - These are actual measured values, not estimates.
-- Ollama LLM benchmarks will be added when Ollama is installed (not currently available on host).
+## LLM Inference (Ollama v0.40.18, CPU-only)
+
+| Metric | Value |
+|--------|-------|
+| Model | Llama 3.2 3B (Q4_0) |
+| Model size | 2.0 GB |
+| License | Llama 3.2 Community License |
+| Inference speed | 17.7 tokens/sec |
+| Memory usage | ~2.7 GB RSS |
+
+### Agent Task Latency (end-to-end: LLM + gateway + executor)
+
+| Agent | Task | Latency |
+|-------|------|---------|
+| Buyer | List suppliers | 920ms |
+| Negotiator | Review contract | 1,705ms |
+| Invoice Processor | Process invoice | 4,728ms |
+| PO Manager | Review PO | 3,191ms |
+| Payment | Create payment | 3,938ms |
+
+### Attack Resistance
+
+| Test | Result |
+|------|--------|
+| Malicious instruction injection | LLM refused ("I can't fulfill that request") |
+| Structured tool call fidelity | Valid JSON in all 5 agent runs |
+| Gateway integration | All LLM-generated tool calls evaluated by policy engine |

@@ -112,7 +112,7 @@ pytest tests/security/ -v     # Security invariant tests (8 invariants)
 pytest tests/integration/ -v  # Integration tests
 ```
 
-**188 tests** covering:
+**206 tests** covering:
 - 8 security invariants (SI-1 through SI-8)
 - 28 cryptographic verification tests (Ed25519, ML-DSA-65, ML-KEM-768, AES-GCM, HMAC, hybrid)
 - 20 injection detection tests

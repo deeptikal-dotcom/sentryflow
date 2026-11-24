@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -170,6 +170,7 @@ class RunAgentTaskRequest(BaseModel):
 @router.post("/run-task")
 async def run_agent_task(
     body: RunAgentTaskRequest,
+    request: Request,
     user: Annotated[User, Depends(require_role("security_admin", "procurement_operator"))],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
@@ -193,9 +194,12 @@ async def run_agent_task(
         parameters=body.parameters,
     )
 
+    auth_header = request.headers.get("authorization", "")
+    auth_token = auth_header.removeprefix("Bearer ").strip() or None
+
     import os
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:8000")
-    run_result = await process_task(task, gateway_url)
+    run_result = await process_task(task, gateway_url, auth_token=auth_token)
 
     await audit.log(
         session, "agent_task_run", "user", user.id,
