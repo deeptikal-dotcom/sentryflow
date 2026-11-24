@@ -259,9 +259,13 @@ async def run_scenario(scenario_id: str):
     if text_fields:
         combined = " ".join(text_fields)
         scan = detector.scan(combined)
-        detection_score = scan["combined_score"]
-        blocked = detection_score >= 40 or scan["flagged"]
-        details["injection_scan"] = scan
+        detection_score = scan.score
+        blocked = detection_score >= 40 or scan.flagged
+        details["injection_scan"] = {
+            "score": scan.score,
+            "flagged": scan.flagged,
+            "layer_scores": scan.layer_scores,
+        }
 
     if scenario.payload.get("classification") == "critical":
         blocked = True
