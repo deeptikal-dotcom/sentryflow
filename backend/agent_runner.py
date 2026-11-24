@@ -190,7 +190,6 @@ async def run_task_deterministic(
     import time
 
     start = time.monotonic()
-    gateway_decisions: list[dict] = []
 
     agent_cls = AGENT_REGISTRY.get(task.agent_type)
     if not agent_cls:

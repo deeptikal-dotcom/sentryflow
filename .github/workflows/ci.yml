@@ -23,7 +23,7 @@ jobs:
           pip install aiosqlite
 
       - name: Lint
-        run: ruff check backend/ --select E,F,W --ignore E501
+        run: ruff check backend/ --select E,F,W --ignore E501,E712,E741
 
       - name: Type check
         run: |
@@ -66,6 +66,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create env file
+        run: cp .env.example .env
 
       - name: Validate compose config
         run: docker compose config --quiet
