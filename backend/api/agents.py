@@ -4,7 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +21,18 @@ from backend.trust.crypto import generate_ed25519_keypair
 
 router = APIRouter()
 audit = AuditLogger()
+
+
+def _parse_capabilities(raw) -> list[str]:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            import ast
+            return ast.literal_eval(raw)
+    return []
 
 
 class RegisterAgentRequest(BaseModel):
@@ -52,7 +64,7 @@ async def list_agents(
                 "name": a.name,
                 "agent_type": a.agent_type,
                 "status": a.status,
-                "capabilities": json.loads(a.capabilities) if isinstance(a.capabilities, str) else a.capabilities,
+                "capabilities": _parse_capabilities(a.capabilities),
                 "created_at": a.created_at,
             }
             for a in agents
@@ -71,7 +83,7 @@ async def register_agent(
         raise HTTPException(status_code=409, detail="Agent name already exists")
 
     priv, pub = generate_ed25519_keypair()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     agent = Agent(
         id=str(uuid.uuid4()),
@@ -115,7 +127,7 @@ async def suspend_agent(
     agent.status = "suspended"
     agent.revoked_by = user.id
     agent.revoked_reason = "Suspended by admin"
-    agent.updated_at = datetime.now(timezone.utc).isoformat()
+    agent.updated_at = datetime.now(UTC).isoformat()
 
     await audit.log(
         session, "agent_suspended", "user", user.id, f"suspend:{agent.name}",
@@ -139,7 +151,7 @@ async def revoke_agent(
     agent.status = "revoked"
     agent.revoked_by = user.id
     agent.revoked_reason = "Revoked by admin"
-    agent.updated_at = datetime.now(timezone.utc).isoformat()
+    agent.updated_at = datetime.now(UTC).isoformat()
 
     await audit.log(
         session, "agent_revoked", "user", user.id, f"revoke:{agent.name}",
@@ -147,3 +159,60 @@ async def revoke_agent(
     )
     await session.commit()
     return {"id": agent_id, "status": "revoked"}
+
+
+class RunAgentTaskRequest(BaseModel):
+    agent_id: str
+    task_description: str
+    parameters: dict = {}
+
+
+@router.post("/run-task")
+async def run_agent_task(
+    body: RunAgentTaskRequest,
+    user: Annotated[User, Depends(require_role("security_admin", "procurement_operator"))],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Run an agent task using LLM (if available) or deterministic fallback."""
+    result = await session.execute(
+        select(Agent).where(Agent.id == body.agent_id)
+    )
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if agent.status != "active":
+        raise HTTPException(status_code=403, detail=f"Agent is {agent.status}")
+
+    from backend.agent_runner import AgentTask, process_task
+
+    task = AgentTask(
+        task_id=str(uuid.uuid4()),
+        agent_type=agent.agent_type,
+        agent_id=agent.id,
+        description=body.task_description,
+        parameters=body.parameters,
+    )
+
+    import os
+    gateway_url = os.getenv("GATEWAY_URL", "http://localhost:8000")
+    run_result = await process_task(task, gateway_url)
+
+    await audit.log(
+        session, "agent_task_run", "user", user.id,
+        f"run_task:{agent.name}:{task.task_id}",
+        target_type="agent", target_id=agent.id,
+        decision_summary=f"llm={run_result.llm_used} success={run_result.success}",
+    )
+    await session.commit()
+
+    return {
+        "task_id": run_result.task_id,
+        "agent_id": run_result.agent_id,
+        "success": run_result.success,
+        "tool_calls_made": run_result.tool_calls_made,
+        "gateway_decisions": run_result.gateway_decisions,
+        "llm_used": run_result.llm_used,
+        "model": run_result.model,
+        "total_latency_ms": run_result.total_latency_ms,
+        "error": run_result.error,
+    }

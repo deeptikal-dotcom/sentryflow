@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Zap, Shield, AlertTriangle, CheckCircle, XCircle, Play } from 'lucide-react';
+import { Zap, Shield, CheckCircle, XCircle, Play } from 'lucide-react';
 
 interface Scenario {
   id: string;

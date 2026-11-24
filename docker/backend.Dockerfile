@@ -19,7 +19,8 @@ COPY data/ data/
 COPY attacks/ attacks/
 COPY tests/ tests/
 
-RUN chown -R sentryflow:sentryflow /app
+RUN mkdir -p /app/data/db /app/data/lab \
+    && chown -R sentryflow:sentryflow /app
 USER sentryflow
 
 EXPOSE 8000

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import secrets
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, status
-from jose import JWTError, jwt
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +51,7 @@ class WSTicketResponse(BaseModel):
 
 
 def _create_token(user_id: str, role: str, token_type: str, expires_delta: timedelta) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "role": role,
@@ -130,7 +129,7 @@ async def login(body: LoginRequest, session: Annotated[AsyncSession, Depends(get
 @router.post("/ws-ticket", response_model=WSTicketResponse)
 async def create_ws_ticket(user: Annotated[User, Depends(get_current_user)]):
     ticket = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.ws_ticket_lifetime_seconds)
+    expires_at = datetime.now(UTC) + timedelta(seconds=settings.ws_ticket_lifetime_seconds)
     _ws_tickets[ticket] = {
         "user_id": user.id,
         "role": user.role,
@@ -143,7 +142,7 @@ def validate_ws_ticket(ticket: str) -> dict | None:
     data = _ws_tickets.pop(ticket, None)  # single-use: remove on retrieval
     if data is None:
         return None
-    if datetime.now(timezone.utc) > data["expires_at"]:
+    if datetime.now(UTC) > data["expires_at"]:
         return None
     return data
 

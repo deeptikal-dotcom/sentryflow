@@ -6,10 +6,11 @@ invoices, contracts — all with integer minor-currency units.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import random
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from sqlalchemy import select
@@ -78,15 +79,15 @@ PRODUCT_CATALOG = [
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _past_date(days_ago: int) -> str:
-    return (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+    return (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
 
 
 def _future_date(days_ahead: int) -> str:
-    return (datetime.now(timezone.utc) + timedelta(days=days_ahead)).isoformat()
+    return (datetime.now(UTC) + timedelta(days=days_ahead)).isoformat()
 
 
 def _get_encryption_key() -> bytes:
@@ -114,11 +115,17 @@ async def generate_all():
         rng = random.Random(42)
 
         users = await _create_users(session, rng)
+        await session.flush()
         agents = await _create_agents(session, users, rng)
+        await session.flush()
         suppliers = await _create_suppliers(session, users, enc_key, fp_key, rng)
+        await session.flush()
         contracts = await _create_contracts(session, suppliers, users, rng)
+        await session.flush()
         pos, po_lines = await _create_purchase_orders(session, suppliers, contracts, agents, users, rng)
+        await session.flush()
         receipts = await _create_goods_receipts(session, pos, po_lines, users, rng)
+        await session.flush()
         await _create_invoices(session, suppliers, pos, po_lines, receipts, agents, enc_key, fp_key, rng)
 
         await session.commit()
@@ -177,7 +184,7 @@ async def _create_agents(session, users, rng) -> list[Agent]:
             name=name,
             agent_type=agent_type,
             public_key_ed25519=base64.b64encode(pub).decode("ascii"),
-            capabilities=str(capabilities),
+            capabilities=json.dumps(capabilities),
             status="active",
             registered_by=admin.id,
             created_at=now,
@@ -260,6 +267,7 @@ async def _create_purchase_orders(session, suppliers, contracts, agents, users, 
     buyer = agents[0]
     approver = users[1]
 
+    pending_lines: dict[str, list[tuple]] = {}
     for i in range(50):
         supplier = rng.choice(suppliers[:15])
         contract = contracts[i % len(contracts)] if i < 20 else None
@@ -290,22 +298,26 @@ async def _create_purchase_orders(session, suppliers, contracts, agents, users, 
         )
         session.add(po)
         pos.append(po)
+        pending_lines[po.id] = [(po.status, l) for l in lines]
 
+    await session.flush()
+
+    for po_id, entries in pending_lines.items():
         po_line_items = []
-        for ln_idx, (desc, qty, unit_price, line_total) in enumerate(lines):
+        for ln_idx, (po_status, (desc, qty, unit_price, line_total)) in enumerate(entries):
             line = POLineItem(
                 id=str(uuid.uuid4()),
-                po_id=po.id,
+                po_id=po_id,
                 line_number=ln_idx + 1,
                 description=desc,
                 quantity=qty,
                 unit_price_minor=unit_price,
                 total_minor=line_total,
-                received_qty=qty if po.status in ("partially_received", "fulfilled") else 0,
+                received_qty=qty if po_status in ("partially_received", "fulfilled") else 0,
             )
             session.add(line)
             po_line_items.append(line)
-        all_lines[po.id] = po_line_items
+        all_lines[po_id] = po_line_items
 
     return pos, all_lines
 
@@ -325,12 +337,17 @@ async def _create_goods_receipts(session, pos, po_lines, users, rng):
             po_id=po.id,
             supplier_id=po.supplier_id,
             received_by=receiver.id,
+            received_date=_past_date(rng.randint(1, 30))[:10],
             status="confirmed",
             created_at=_past_date(rng.randint(1, 30)),
         )
         session.add(receipt)
         receipts.append(receipt)
 
+    await session.flush()
+
+    for receipt in receipts:
+        lines = po_lines.get(receipt.po_id, [])
         for po_line in lines:
             gr_line = GRLineItem(
                 id=str(uuid.uuid4()),
@@ -346,6 +363,7 @@ async def _create_goods_receipts(session, pos, po_lines, users, rng):
 
 async def _create_invoices(session, suppliers, pos, po_lines, receipts, agents, enc_key, fp_key, rng):
     processor = agents[2]
+    invoices = []
 
     for i, po in enumerate(pos[:40]):
         supplier = next((s for s in suppliers if s.id == po.supplier_id), None)
@@ -355,7 +373,6 @@ async def _create_invoices(session, suppliers, pos, po_lines, receipts, agents, 
         lines = po_lines.get(po.id, [])
         total = sum(l.total_minor for l in lines)
 
-        # 10% of invoices have small discrepancies (testing fraud detection)
         if rng.random() < 0.10:
             total += rng.randint(100, 50000)
 
@@ -374,7 +391,11 @@ async def _create_invoices(session, suppliers, pos, po_lines, receipts, agents, 
             updated_at=_utcnow(),
         )
         session.add(inv)
+        invoices.append((inv, lines))
 
+    await session.flush()
+
+    for inv, lines in invoices:
         for ln_idx, po_line in enumerate(lines):
             inv_line = InvoiceLineItem(
                 id=str(uuid.uuid4()),

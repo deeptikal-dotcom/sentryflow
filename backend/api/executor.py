@@ -8,7 +8,6 @@ Security guarantees:
 """
 from __future__ import annotations
 
-import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,7 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.auth import get_current_user, require_role
+from backend.api.auth import require_role
 from backend.audit.audit_logger import AuditLogger
 from backend.database import get_session
 from backend.executor.executor import Executor

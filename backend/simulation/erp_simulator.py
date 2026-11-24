@@ -7,12 +7,12 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.goods_receipt import GRLineItem, GoodsReceipt
+from backend.models.goods_receipt import GoodsReceipt, GRLineItem
 from backend.models.invoice import Invoice, InvoiceLineItem, ThreeWayMatch
 from backend.models.purchase_order import POLineItem, PurchaseOrder
 from backend.models.supplier import Supplier
@@ -20,7 +20,7 @@ from backend.simulation.matching import three_way_match
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _uuid() -> str:
